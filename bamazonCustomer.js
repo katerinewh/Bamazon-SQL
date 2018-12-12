@@ -13,15 +13,14 @@ var connection = mysql.createConnection({
 // connect to the mysql server and sql database
 connection.connect(function (err) {
     if (err) throw err;
-    start();
+  
 });
 function readItems() {
     console.log("Selecting all items...\n");
     connection.query("SELECT * FROM items", function (err, res) {
         if (err) throw err;
         console.log(res);
-        connection.end();
-    });
+      });
 }
 function start(){
     //prints the items for sale and their details
@@ -53,7 +52,7 @@ function start(){
         {
           type: "input",
           name: "qty",
-          message: "How much would you like to purchase?",
+          message: "How many would you like to purchase?",
           validate: function(value){
             if(isNaN(value)){
               return false;
@@ -68,30 +67,30 @@ function start(){
           var grandTotal = parseFloat(((res[whatToBuy].Price)*howMuchToBuy).toFixed(2));
     
           //check if quantity is sufficient
-          if(res[whatToBuy].StockQuantity >= howMuchToBuy){
+          if(res[whatToBuy].stock_quantity >= howMuchToBuy){
             //after purchase, updates quantity in Products
-            connection.query("UPDATE Products SET ? WHERE ?", [
-            {StockQuantity: (res[whatToBuy].StockQuantity - howMuchToBuy)},
+            connection.query("UPDATE products SET ? WHERE ?", [
+            {stock_quantity: (res[whatToBuy].stock_quantity - howMuchToBuy)},
             {ItemID: ans.id}
             ], function(err, result){
                 if(err) throw err;
                 console.log("Success! Your total is $" + grandTotal.toFixed(2) + ". Your item(s) will be shipped to you in 3-5 business days.");
             });
     
-            connection.query("SELECT * FROM Departments", function(err, deptRes){
+            connection.query("SELECT * FROM products", function(err, data){
               if(err) throw err;
               var index;
-              for(var i = 0; i < deptRes.length; i++){
-                if(deptRes[i].DepartmentName === res[whatToBuy].DepartmentName){
+              for(var i = 0; i < data.length; i++){
+                if(data[i].stock_quantity === res[whatToBuy].stock_quantity){
                   index = i;
                 }
               }
               
               //updates totalSales in departments table
-              connection.query("UPDATE Departments SET ? WHERE ?", [
-              {TotalSales: deptRes[index].TotalSales + grandTotal},
-              {DepartmentName: res[whatToBuy].DepartmentName}
-              ], function(err, deptRes){
+              connection.query("UPDATE products SET ? WHERE ?", [
+              {TotalSales: data[index].TotalSales + grandTotal},
+              {stock_quantity: res[whatToBuy].stock_quantity}
+              ], function(err, data){
                   if(err) throw err;
                   //console.log("Updated Dept Sales.");
               });
