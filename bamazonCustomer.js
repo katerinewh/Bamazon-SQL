@@ -23,51 +23,102 @@ function readItems() {
         connection.end();
     });
 }
-function start() {
-    inquirer.prompt([
+function start(){
+    //prints the items for sale and their details
+    connection.query('SELECT * FROM Products', function(err, res){
+      if(err) throw err;
+    
+      console.log("Welcome to Bamazon!")
+    //   console.log('----------------------------------------------------------------------------------------------------')
+    
+      for(var i = 0; i<res.length;i++){
+        console.log("ID: " + res[i].id + " | " + "Product: " + res[i].product_name + " | " + "Department: " + res[i].department_name + " | " + "Price: " + res[i].price + " | " + "QTY: " + res[i].stock_quantity);
+        // console.log('--------------------------------------------------------------------------------------------------')
+      }
+    
+      console.log(' ');
+      inquirer.prompt([
         {
-            name: "startAnswer",
-            message: "Do you want to 'post' and item or 'bid' on an item?"
+          type: "input",
+          name: "id",
+          message: "What is the ID of the product you would like to purchase?",
+          validate: function(value){
+            if(isNaN(value) == false && parseInt(value) <= res.length && parseInt(value) > 0){
+              return true;
+            } else{
+              return false;
+            }
+          }
+        },
+        {
+          type: "input",
+          name: "qty",
+          message: "How much would you like to purchase?",
+          validate: function(value){
+            if(isNaN(value)){
+              return false;
+            } else{
+              return true;
+            }
+          }
         }
-    ]).then(function (answers) {
-        if (answers.startAnswer === "post") {
-            console.log("Inserting a new item...\n");
-            inquirer.prompt([
-            {
-            name: "postItem",
-            message: "What would you like to post?"}
-            then(var query = connection.query(
-                        "INSERT INTO item SET ?",
-            }
-            ])
-            function(err, res) {
-                console.log(res.affectedRows + " product inserted!\n");
-                // Call updateProduct AFTER the INSERT completes
-                updateProduct();
-            }
-            );
-
-    // logs the actual query being run
-    console.log(query.sql);
-
-
-
-
-    connection.query
-} else if (answers.startAnswer === "bid") {
-    // console.log("Code for bidding on an item!")
-    connection.query("SELECT * FROM items", function (err, res) {
-        if (err) throw err;
-        console.log("-------------")
-        console.log("Title: " + res[0].title);
-        console.log("Department: " + res[0].department);
-        console.log("Price: " + res[0].price);
-        console.log("-------------")
-        connection.end();
-    });
-
-}
-
+        ]).then(function(ans){
+          var whatToBuy = (ans.id)-1;
+          var howMuchToBuy = parseInt(ans.qty);
+          var grandTotal = parseFloat(((res[whatToBuy].Price)*howMuchToBuy).toFixed(2));
+    
+          //check if quantity is sufficient
+          if(res[whatToBuy].StockQuantity >= howMuchToBuy){
+            //after purchase, updates quantity in Products
+            connection.query("UPDATE Products SET ? WHERE ?", [
+            {StockQuantity: (res[whatToBuy].StockQuantity - howMuchToBuy)},
+            {ItemID: ans.id}
+            ], function(err, result){
+                if(err) throw err;
+                console.log("Success! Your total is $" + grandTotal.toFixed(2) + ". Your item(s) will be shipped to you in 3-5 business days.");
+            });
+    
+            connection.query("SELECT * FROM Departments", function(err, deptRes){
+              if(err) throw err;
+              var index;
+              for(var i = 0; i < deptRes.length; i++){
+                if(deptRes[i].DepartmentName === res[whatToBuy].DepartmentName){
+                  index = i;
+                }
+              }
+              
+              //updates totalSales in departments table
+              connection.query("UPDATE Departments SET ? WHERE ?", [
+              {TotalSales: deptRes[index].TotalSales + grandTotal},
+              {DepartmentName: res[whatToBuy].DepartmentName}
+              ], function(err, deptRes){
+                  if(err) throw err;
+                  //console.log("Updated Dept Sales.");
+              });
+            });
+    
+          } else{
+            console.log("Sorry, there's not enough in stock!");
+          }
+    
+          reprompt();
+        })
     })
-}
-
+    }
+    
+    //purchacse more items?
+    function reprompt(){
+      inquirer.prompt([{
+        type: "confirm",
+        name: "reply",
+        message: "Would you like to purchase another item?"
+      }]).then(function(ans){
+        if(ans.reply){
+          start();
+        } else{
+          console.log("See you soon!");
+        }
+      });
+    }
+    
+    start();
